@@ -1,0 +1,58 @@
+server:
+  port: ${PORT:8083}
+
+spring:
+  application:
+    name: ms-andesstay-notify
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:andesstay}
+    password: ${RABBITMQ_PASSWORD:andesstay_dev}
+    virtual-host: /
+    connection-timeout: 5s
+
+    listener:
+      simple:
+        # ACK manual: el listener decide ACK, reintento o DLQ.
+        acknowledge-mode: manual
+        prefetch: 10
+        concurrency: 1
+        max-concurrency: 3
+        # Si el mensaje no se puede ni convertir (JSON inválido),
+        # el contenedor lo rechaza SIN reencolar: va directo a la DLQ.
+        default-requeue-rejected: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# =====================================================================
+# Nombres de mensajería centralizados (MessagingProperties).
+# Deben coincidir con los de ms-andesstay-reservations.
+# =====================================================================
+andesstay:
+  messaging:
+    exchanges:
+      commands: andesstay.commands
+      events: andesstay.events
+      dead-letter: andesstay.dlx
+
+    route:
+      queue: notify.email.q
+      routing-key: "email.send"
+      dead-letter-queue: notify.email.dlq
+
+    retry:
+      # Intentos totales ante un error recuperable antes de ir a la DLQ.
+      max-attempts: 3
+
+logging:
+  level:
+    cl.duoc.andesstay: INFO
